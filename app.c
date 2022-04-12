@@ -24,6 +24,7 @@ int calculate_workers(int num_tasks);
 void create_pipes(p_communication pipes, int num_workers, int* highest_fd_read_answer);
 void initialize_workers(const char **tasks, p_communication pipes, int num_workers, int num_tasks, int *index);
 void send_initial_tasks(const char** tasks, p_communication pipes, int* index_tasks, int num_workers);
+void send_task(t_communication pipe, const char* task, int* index_tasks);
 //*------------------------------
 
 int main(int argc, char const* argv[]){
@@ -100,10 +101,10 @@ void initialize_workers(const char** tasks, t_communication* pipes, int num_work
 
         if(pid == 0){
 
-            /* if(dup2(pipes[i].pipe_return_answer[1], STDOUT_FILENO) == -1){
+            if(dup2(pipes[i].pipe_return_answer[1], STDOUT_FILENO) == -1){
                 perror("dup2 error");
                 return;
-            } */
+            }
 
             if(dup2(pipes[i].pipe_send_task[0], STDIN_FILENO) == -1){
                 perror("dup2 error");
@@ -122,21 +123,25 @@ void initialize_workers(const char** tasks, t_communication* pipes, int num_work
 
 }
 
-void send_task(t_communication pipe, const char* task){
+void send_task(t_communication pipe, const char* task, int* index_tasks){
 
     int len = strlen(task);
 
     if(write(pipe.pipe_send_task[1], task, len) == -1){
         perror("write error");
     }
+
+    (*index_tasks)++;
 }
 
 void send_initial_tasks(const char** tasks, p_communication pipes, int* index_tasks, int num_workers){
 
     for (int i = 0; i < num_workers; i++)
     {
-        send_task(pipes[i], tasks[*index_tasks]);
-        (*index_tasks)++;
+        send_task(pipes[i], tasks[*index_tasks], index_tasks);
+        if (write(pipes[i].pipe_send_task[1], "\n", 1) == -1){
+            perror("write");
+        }
     }
 
 }
