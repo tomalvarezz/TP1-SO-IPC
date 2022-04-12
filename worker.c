@@ -1,9 +1,20 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <errno.h>
+#define _GNU_SOURCE
 
-int main(void){
+int main(int argc, char *argv[]){
 
-    printf("hola mundo\n");
+    char *line = NULL;
+    size_t len = 0;
+    ssize_t nread;
 
-    return 0;
+    while ((nread = getline(&line, &len, stdin)) != -1) {
+        fwrite(line, nread, 1, stdout);
+    }
 
+    free(line);
+    exit(EXIT_SUCCESS);
 } 
