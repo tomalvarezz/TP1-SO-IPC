@@ -15,10 +15,12 @@ typedef struct {
     int pipe_return_answer[2];
 } t_communication;
 
+typedef t_communication *p_communication;
+
 //*Prototypes--------------------
 int calculate_workers(int num_tasks);
-void create_pipes(t_communication* pipes, int num_workers);
-void initialize_workers(const char** tasks, t_communication* pipes, int num_workers, int num_tasks, int* index);
+void create_pipes(p_communication pipes, int num_workers);
+void initialize_workers(const char **tasks, p_communication pipes, int num_workers, int num_tasks, int *index);
 //*------------------------------
 
 int main(int argc, char const* argv[]){
