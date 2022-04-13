@@ -3,21 +3,39 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <errno.h>
+#include <limits.h>
+#include <string.h>
+
+void solve_task(char* task);
 
 int main(int argc, char *argv[]){
-    if(setvbuf(stdout, NULL, _IONBF, 0) == -1){perror("setvbuf error");}
 
-    char *line = NULL;
+    if(setvbuf(stdout, NULL, _IONBF, 0) == -1){perror("setvbuf error");}
+    
+    char *task = NULL;
     size_t len = 0;
     ssize_t nread;
 
-    /* while ((nread = getline(&line, &len, stdin)) != -1) {
-        fwrite(line, nread, 1, stderr);
-    } */
+    while ((nread = getline(&task, &len, stdin)) > 0) {
+        task[strcspn(task, "\n")]= 0;
+        solve_task(task);
+    
+    }
 
-    nread = getline(&line, &len, stdin);
-    fwrite(line, nread, 1, stderr);
-
-    free(line);
+    free(task);
     exit(EXIT_SUCCESS);
 } 
+
+void solve_task(char* task){
+
+    char solved_task[4096];
+    int length;
+
+    /* FILE* result_task;
+    if(result_task = popen(solved_task, "r") == -1){
+        perror("popen error");
+    } */
+
+    printf("%s", task);
+    
+}

@@ -6,6 +6,9 @@
 #include <sys/wait.h>
 #include <string.h>
 #include <fcntl.h>
+#include <stdlib.h>
+#include <sys/select.h>
+#include <limits.h>
 //*------------------------------
 
 //*Defines-----------------------
@@ -48,14 +51,51 @@ int main(int argc, char const* argv[]){
     //inicializamos los workers con sus respectivas tareas iniciales
     initialize_workers(tasks, pipes, num_workers, num_tasks, &index_task);
 
+    for (int i = 0; i < num_workers; i++)
+    {
+        close(pipes[i].pipe_return_answer[1]);
+        close(pipes[i].pipe_send_task[0]);
+    }
+    
+
     send_initial_tasks(tasks, pipes, &index_task, num_workers);
+    
+    for (int i = 0; i < num_workers; i++)
+    {
+        char buff[4096];
+        read(pipes[i].pipe_return_answer[0], buff, 4096);
+        printf("%s", buff);
+    }
+
+    /* while(index_task < num_tasks){
+
+        fd_set read_set;
+        FD_ZERO(&read_set);
+
+        fill_set(&read_set, pipes, num_workers);
+
+        if(select(highest_fd_read_answer, &read_set, NULL, NULL, NULL) == -1){
+            perror("select error"),
+            exit(1);
+        }
+
+        for (int i = 0; i < num_workers; i++)
+        {
+            if(FD_ISSET(pipes[i].pipe_return_answer[0], &read_set) != 0){
+                char buff_answer[SSIZE_MAX];
+                int length_answer = read(pipes[i].pipe_return_answer[0], buff_answer, SSIZE_MAX);
+            }
+        }
+        
+    } */
+
+    for(int i = 0 ; i < num_workers ; i++){
+        close(pipes[i].pipe_return_answer[0]);
+        close(pipes[i].pipe_send_task[1]);
+    }
 
     for(int i = 0 ; i < num_workers ; i++){
         wait(NULL);
-        close(pipes[i].pipe_return_answer[0]);
-        close(pipes[i].pipe_return_answer[1]);
-        close(pipes[i].pipe_send_task[0]);
-        close(pipes[i].pipe_send_task[1]);
     }
 
     return 0;
@@ -90,7 +130,6 @@ void create_pipes(t_communication* pipes, int num_workers, int* highest_fd_read_
 
 void initialize_workers(const char** tasks, t_communication* pipes, int num_workers, int num_tasks, int* index_task){
 
-
     for (int i = 0; i < num_workers; i++)
     {
         int pid;
@@ -100,7 +139,20 @@ void initialize_workers(const char** tasks, t_communication* pipes, int num_work
         }
 
         if(pid == 0){
+            
+            close(pipes[i].pipe_return_answer[0]);
+            close(pipes[i].pipe_send_task[1]);
 
+            for (int j = 0; j < num_workers; j++)
+            {
+                if(j != i){
+                    close(pipes[j].pipe_return_answer[0]);
+                    close(pipes[j].pipe_return_answer[1]);
+                    close(pipes[j].pipe_send_task[0]);
+                    close(pipes[j].pipe_send_task[1]);
+                }
+            }
+            
             if(dup2(pipes[i].pipe_return_answer[1], STDOUT_FILENO) == -1){
                 perror("dup2 error");
                 return;
@@ -111,12 +163,14 @@ void initialize_workers(const char** tasks, t_communication* pipes, int num_work
                 return;
             }
 
-            //close(pipes[i].pipe_return_answer[1]);
+            close(pipes[i].pipe_return_answer[1]);
             close(pipes[i].pipe_send_task[0]);
+
+            printf("hola\n");
 
             if(execl("./worker", "./worker", NULL)==-1){
                 perror("exec failed");
-                return;
+                exit(1);
             }
         }
     }
