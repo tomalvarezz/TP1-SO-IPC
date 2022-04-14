@@ -6,27 +6,33 @@
 #include <limits.h>
 #include <string.h>
 
-void solve_task(char* task);
+void solve_task(char *task);
 
-int main(int argc, char *argv[]){
+int main(int argc, char *argv[])
+{
 
-    if(setvbuf(stdout, NULL, _IONBF, 0) == -1){perror("setvbuf error");}
-    
+    if (setvbuf(stdout, NULL, _IONBF, 0) == -1)
+    {
+        perror("setvbuf error");
+    }
+
     char *task = NULL;
     size_t len = 0;
     ssize_t nread;
 
-    while ((nread = getline(&task, &len, stdin)) > 0) {
-        task[strcspn(task, "\n")]= 0;
+    while ((nread = getline(&task, &len, stdin)) != 0)
+    {
+        // task[strcspn(task, "\n")]= 0;
+        // fprintf(stderr, "worker: %s\n", task);
         solve_task(task);
-    
     }
 
     free(task);
     exit(EXIT_SUCCESS);
-} 
+}
 
-void solve_task(char* task){
+void solve_task(char *task)
+{
 
     char solved_task[4096];
     int length;
@@ -37,5 +43,4 @@ void solve_task(char* task){
     } */
 
     printf("%s", task);
-    
 }
