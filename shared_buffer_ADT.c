@@ -1,5 +1,5 @@
 //*includes----------------------
-#include "shared_buffer_ADT.h"
+#include "includes.h"
 //*------------------------------
 
 struct shared_buffer_CDT{
@@ -24,28 +24,28 @@ shared_buffer_ADT create_shared_buffer(char * sem_path, char *shm_path, int shm_
     sem_unlink(shared_buffer->sem_path);
     shm_unlink(shared_buffer->shm_path);
 
-    shared_buffer->shm_semaphore = sem_open(sem_path, O_CREAT | O_EXCL, 0660, 1);
+    shared_buffer->shm_semaphore = sem_open(sem_path, O_CREAT | O_EXCL, S_IWUSR | S_IRUSR, 1);
     if (shared_buffer->shm_semaphore == SEM_FAILED){
         perror("sem_open");
-        exit(1);
+        exit(NOT_OK);
     } 
 
     shared_buffer->shm_fd = shm_open(shm_path, O_CREAT | O_RDWR | O_EXCL, S_IWUSR | S_IRUSR);
     if (shared_buffer->shm_fd == -1){
         perror("shm_open");
-        exit(1);
+        exit(NOT_OK);
     }
 
     if (ftruncate(shared_buffer->shm_fd, shm_size) == -1){
         perror("ftruncate");
-        exit(1);
+        exit(NOT_OK);
     }
 
     shared_buffer->shm_mapped_ptr = mmap(NULL, shm_size, PROT_WRITE, MAP_SHARED, shared_buffer->shm_fd, 0);
 
     if (shared_buffer->shm_mapped_ptr == MAP_FAILED){
         perror("mmap");
-        exit(1);
+        exit(NOT_OK);
     }
 
     shared_buffer->shm_write_ptr = shared_buffer->shm_mapped_ptr;
@@ -55,19 +55,19 @@ shared_buffer_ADT create_shared_buffer(char * sem_path, char *shm_path, int shm_
 }
 
 void close_shared_buffer(shared_buffer_ADT shared_buffer){
-     if(munmap(shared_buffer->shm_mapped_ptr, shared_buffer->shm_size) == -1){
+     if(munmap(shared_buffer->shm_mapped_ptr, shared_buffer->shm_size) == ERROR){
         perror("munmap");
-        exit(1);
+        exit(NOT_OK);
     }
     
-    if(sem_close(shared_buffer->shm_semaphore) == -1){
+    if(sem_close(shared_buffer->shm_semaphore) == ERROR){
         perror("sem_close");
-        exit(1);
+        exit(NOT_OK);
     } 
 
-    if(close(shared_buffer->shm_fd) == -1){
+    if(close(shared_buffer->shm_fd) == ERROR){
         perror("close");
-        exit(1);
+        exit(NOT_OK);
     }
 
     //!el unlink lo debemos hacer en el view porque sino no podriamos leer de la shared memory
@@ -85,19 +85,19 @@ shared_buffer_ADT open_shared_buffer(char* sem_path, char* shm_path, int shm_siz
     shared_buffer->shm_semaphore = sem_open(sem_path, O_RDONLY, S_IRUSR, 0);
     if (shared_buffer->shm_semaphore == SEM_FAILED){
         perror("sem_open");
-        exit(1);
+        exit(NOT_OK);
     } 
 
     shared_buffer->shm_fd = shm_open(shm_path, O_RDONLY, S_IRUSR);
-    if (shared_buffer->shm_fd == -1){
+    if (shared_buffer->shm_fd == ERROR){
         perror("shm_open");
-        exit(1);
+        exit(NOT_OK);
     }
 
     shared_buffer->shm_mapped_ptr = mmap(NULL, shm_size, PROT_READ, MAP_SHARED, shared_buffer->shm_fd, 0);
     if (shared_buffer->shm_mapped_ptr == MAP_FAILED){
         perror("mmap");
-        exit(1);
+        exit(NOT_OK);
     }
 
     shared_buffer->shm_write_ptr = shared_buffer->shm_mapped_ptr;
@@ -107,19 +107,19 @@ shared_buffer_ADT open_shared_buffer(char* sem_path, char* shm_path, int shm_siz
 }
 
 void unlink_shared_buffer(shared_buffer_ADT shared_buffer){
-    if(munmap(shared_buffer->shm_mapped_ptr, shared_buffer->shm_size) == -1){
+    if(munmap(shared_buffer->shm_mapped_ptr, shared_buffer->shm_size) == ERROR){
         perror("munmap");
-        exit(1);
+        exit(NOT_OK);
     }
     
-    if(shm_unlink(shared_buffer->shm_path) == -1){
+    if(shm_unlink(shared_buffer->shm_path) == ERROR){
         perror("close");
-        exit(1);
+        exit(NOT_OK);
     }
     
-    if(sem_unlink(shared_buffer->sem_path) == -1){
+    if(sem_unlink(shared_buffer->sem_path) == ERROR){
         perror("close");
-        exit(1);
+        exit(NOT_OK);
     }
 
     free(shared_buffer);  
@@ -133,25 +133,25 @@ void shared_buffer_send(shared_buffer_ADT shared_buffer,char* buff){
     shared_buffer->shm_write_ptr += (size+2);
 }
 
-int shared_buffer_read(shared_buffer_ADT shared_buffer,char* buff){
+void shared_buffer_read(shared_buffer_ADT shared_buffer,char* buff){
     strcpy(buff,shared_buffer->shm_read_ptr);
 
     int length=strlen(buff);
     shared_buffer->shm_read_ptr+=(length+1);
 
-    return length;
+    
 }
 
 void shared_buffer_post(shared_buffer_ADT shared_buffer){
-    if(sem_post(shared_buffer->shm_semaphore) == -1) {
+    if(sem_post(shared_buffer->shm_semaphore) == ERROR) {
         perror("sem_post");
-        exit(1);
+        exit(NOT_OK);
     }
 }
 
 void shared_buffer_wait(shared_buffer_ADT shared_buffer){
-    if(sem_wait(shared_buffer->shm_semaphore) == -1) {
+    if(sem_wait(shared_buffer->shm_semaphore) == ERROR) {
         perror("sem_wait");
-        exit(1);
+        exit(NOT_OK);
     }
 }

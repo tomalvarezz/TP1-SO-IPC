@@ -27,7 +27,7 @@ shared_buffer_ADT open_shared_buffer(char* sem_path, char* shm_path, int shm_siz
 void unlink_shared_buffer(shared_buffer_ADT shared_buffer);
 
 void shared_buffer_send(shared_buffer_ADT shared_buffer, char* buff);
-int shared_buffer_read(shared_buffer_ADT shared_buffer, char* buff);
+void shared_buffer_read(shared_buffer_ADT shared_buffer, char* buff);
 
 void shared_buffer_post(shared_buffer_ADT shared_buffer);
 void shared_buffer_wait(shared_buffer_ADT shared_buffer);

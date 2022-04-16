@@ -1,22 +1,5 @@
-//*includes----------------------
-#include <stdio.h>
-#include <errno.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <string.h>
-#include <fcntl.h>
-#include <stdlib.h>
-#include <sys/select.h>
-#include <limits.h>
-#include "shared_buffer_ADT.h"
-//*------------------------------
+#include "includes.h"
 
-//*Defines-----------------------
-#define MAX_WORKERS_CAN_CREATE 5
-#define MAX_TASKS_PER_WORKER 3
-
-//*------------------------------
 
 typedef struct {
     int pipe_send_task[2];
@@ -50,13 +33,13 @@ int main(int argc, char const* argv[]){
     int num_workers = calculate_workers(num_tasks);
 
     //inicializamos y obtenemos el puntero a la shared memory
-    shared_buffer_ADT shared_buffer = create_shared_buffer(SEM_PATH, SHM_PATH, num_tasks*4096);
+    shared_buffer_ADT shared_buffer = create_shared_buffer(SEM_PATH, SHM_PATH, num_tasks*MAX_BUFF);
 
     FILE * results_file;
     results_file = fopen("results.txt", "w+");
     if (results_file == NULL) {
         perror("fopen");
-        exit(1);
+        exit(NOT_OK);
     }
 
     sleep(2);
@@ -80,21 +63,23 @@ int main(int argc, char const* argv[]){
     send_initial_tasks(tasks, pipes, &index_task, num_workers, tasks_per_worker);
 
     while(solved_tasks < num_tasks){
-        char buff_answer[4096];
+        char buff_answer[MAX_BUFF];
         fd_set read_set;
         FD_ZERO(&read_set);
         fill_set(&read_set, pipes, num_workers);
-        if(select(highest_fd_read_answer+1, &read_set, NULL, NULL, NULL) == -1){
+        if (select(highest_fd_read_answer + 1, &read_set, NULL, NULL, NULL) == ERROR)
+        {
             perror("select error"),
-            exit(1);
+            exit(NOT_OK);
         }
 
         for (int i = 0; i < num_workers; i++){
             if(FD_ISSET(pipes[i].pipe_return_answer[0], &read_set) != 0){
                 int read_return;
-                if((read_return = read(pipes[i].pipe_return_answer[0], buff_answer, 4096)) == -1){
+                if ((read_return = read(pipes[i].pipe_return_answer[0], buff_answer, MAX_BUFF)) == ERROR)
+                {
                     perror("read error");
-                    exit(1);
+                    exit(NOT_OK);
                 }
 
                 char * answer = strtok(buff_answer, "\n");
@@ -105,7 +90,7 @@ int main(int argc, char const* argv[]){
 
                     if(fprintf(results_file, "%s\n", answer)<0){
                         perror("fprintf");
-                        exit(1);
+                        exit(NOT_OK);
                     }
 
                     answer = strtok(NULL, "\n");
@@ -132,12 +117,12 @@ int main(int argc, char const* argv[]){
 
     if(fclose(results_file) == EOF) {
         perror("fclose");
-        exit(1);
+        exit(NOT_OK);
     }
 
     close_shared_buffer(shared_buffer);
 
-    return 0;
+    return OK;
 }
 
 int calculate_workers(int num_tasks){
@@ -162,10 +147,12 @@ void create_pipes(t_communication* pipes, int num_workers, int* highest_fd_read_
 
     for (int i = 0; i < num_workers; i++)
     {
-        if(pipe(pipes[i].pipe_return_answer)== -1){
+        if (pipe(pipes[i].pipe_return_answer) == ERROR)
+        {
             perror("pipe failed");
         }
-        if(pipe(pipes[i].pipe_send_task)== -1){
+        if (pipe(pipes[i].pipe_send_task) == ERROR)
+        {
             perror("pipe failed");
         }
 
@@ -181,9 +168,10 @@ void initialize_workers(const char** tasks, t_communication* pipes, int num_work
     for (int i = 0; i < num_workers; i++)
     {
         int pid;
-        if((pid = fork()) == -1){
+        if ((pid = fork()) == ERROR)
+        {
             perror("fork failed");
-            return;
+            exit(NOT_OK);
         }
 
         if(pid == 0){
@@ -200,23 +188,26 @@ void initialize_workers(const char** tasks, t_communication* pipes, int num_work
                     close(pipes[j].pipe_send_task[1]);
                 }
             }
-            
-            if(dup2(pipes[i].pipe_return_answer[1], STDOUT_FILENO) == -1){
+
+            if (dup2(pipes[i].pipe_return_answer[1], STDOUT_FILENO) == ERROR)
+            {
                 perror("dup2 error");
-                return;
+                exit(NOT_OK);
             }
 
-            if(dup2(pipes[i].pipe_send_task[0], STDIN_FILENO) == -1){
+            if (dup2(pipes[i].pipe_send_task[0], STDIN_FILENO) == ERROR)
+            {
                 perror("dup2 error");
-                return;
+                exit(NOT_OK);
             }
 
             close(pipes[i].pipe_return_answer[1]);
             close(pipes[i].pipe_send_task[0]);
 
-            if(execl("./worker", "./worker", NULL)==-1){
+            if (execl("./worker", "./worker", NULL) == ERROR)
+            {
                 perror("exec failed");
-                exit(1);
+                exit(NOT_OK);
             }
         }
     }
@@ -226,11 +217,15 @@ void initialize_workers(const char** tasks, t_communication* pipes, int num_work
 void send_task(t_communication pipe, const char** tasks, int* index_tasks){
 
     int len = strlen(tasks[*index_tasks]);
-    if(write(pipe.pipe_send_task[1], tasks[*index_tasks], len) == -1){
+    if (write(pipe.pipe_send_task[1], tasks[*index_tasks], len) == ERROR)
+    {
         perror("write error");
+        exit(NOT_OK);
     }
-    if (write(pipe.pipe_send_task[1], "\n", 1) == -1){
+    if (write(pipe.pipe_send_task[1], "\n", 1) == ERROR)
+    {
         perror("write");
+        exit(NOT_OK);
     }
 
     (*index_tasks)++;
