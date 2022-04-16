@@ -15,8 +15,7 @@
 //*Defines-----------------------
 #define MAX_WORKERS_CAN_CREATE 5
 #define MAX_TASKS_PER_WORKER 3
-#define SEM_PATH "/shm_sem"
-#define SHM_PATH "/shm_buff"
+
 //*------------------------------
 
 typedef struct {
@@ -50,10 +49,18 @@ int main(int argc, char const* argv[]){
     int solved_tasks = 0;
     int num_workers = calculate_workers(num_tasks);
 
-    shared_buffer_ADT shared_buffer = NULL;
-
     //inicializamos y obtenemos el puntero a la shared memory
-    shared_buffer = create_shared_buffer(SEM_PATH, SHM_PATH, num_tasks*4096);
+    shared_buffer_ADT shared_buffer = create_shared_buffer(SEM_PATH, SHM_PATH, num_tasks*4096);
+
+    FILE * results_file;
+    results_file = fopen("results.txt", "w+");
+    if (results_file == NULL) {
+        perror("fopen");
+        exit(1);
+    }
+
+    sleep(2);
+    printf("%d", num_tasks);
 
     int tasks_per_worker = calculate_tasks_per_worker(num_workers, num_tasks);
 
@@ -65,8 +72,7 @@ int main(int argc, char const* argv[]){
     //inicializamos los workers con sus respectivas tareas iniciales
     initialize_workers(tasks, pipes, num_workers, num_tasks, &index_task);
 
-    for (int i = 0; i < num_workers; i++)
-    {
+    for (int i = 0; i < num_workers; i++){
         close(pipes[i].pipe_return_answer[1]);
         close(pipes[i].pipe_send_task[0]);
     }
@@ -74,8 +80,6 @@ int main(int argc, char const* argv[]){
     send_initial_tasks(tasks, pipes, &index_task, num_workers, tasks_per_worker);
 
     while(solved_tasks < num_tasks){
-
-        //printf("solved task: %d\nnum tasks: %d\n", solved_tasks, num_tasks);
         char buff_answer[4096];
         fd_set read_set;
         FD_ZERO(&read_set);
@@ -85,10 +89,8 @@ int main(int argc, char const* argv[]){
             exit(1);
         }
 
-        for (int i = 0; i < num_workers; i++)
-        {
+        for (int i = 0; i < num_workers; i++){
             if(FD_ISSET(pipes[i].pipe_return_answer[0], &read_set) != 0){
-
                 int read_return;
                 if((read_return = read(pipes[i].pipe_return_answer[0], buff_answer, 4096)) == -1){
                     perror("read error");
@@ -97,11 +99,17 @@ int main(int argc, char const* argv[]){
 
                 char * answer = strtok(buff_answer, "\n");
                 while(answer != NULL){
-                    
-                    shm_send(shared_buffer, answer);
+                    shared_buffer_send(shared_buffer, answer);
+
+                    shared_buffer_post(shared_buffer);
+
+                    if(fprintf(results_file, "%s\n", answer)<0){
+                        perror("fprintf");
+                        exit(1);
+                    }
+
                     answer = strtok(NULL, "\n");
                     solved_tasks++;
-
                 }
 
                 if(index_task < num_tasks){
@@ -111,10 +119,7 @@ int main(int argc, char const* argv[]){
             }
 
         }
-
-        
     }
-
 
     for(int i = 0 ; i < num_workers ; i++){
         close(pipes[i].pipe_return_answer[0]);
@@ -124,6 +129,13 @@ int main(int argc, char const* argv[]){
     for(int i = 0 ; i < num_workers ; i++){
         wait(NULL);
     }
+
+    if(fclose(results_file) == EOF) {
+        perror("fclose");
+        exit(1);
+    }
+
+    close_shared_buffer(shared_buffer);
 
     return 0;
 }
