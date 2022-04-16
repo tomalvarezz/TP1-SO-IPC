@@ -9,11 +9,14 @@
 #include <stdlib.h>
 #include <sys/select.h>
 #include <limits.h>
+#include "shared_buffer_ADT.h"
 //*------------------------------
 
 //*Defines-----------------------
 #define MAX_WORKERS_CAN_CREATE 5
 #define MAX_TASKS_PER_WORKER 3
+#define SEM_PATH "/shm_sem"
+#define SHM_PATH "/shm_buff"
 //*------------------------------
 
 typedef struct {
@@ -47,6 +50,11 @@ int main(int argc, char const* argv[]){
     int solved_tasks = 0;
     int num_workers = calculate_workers(num_tasks);
 
+    shared_buffer_ADT shared_buffer = NULL;
+
+    //inicializamos y obtenemos el puntero a la shared memory
+    shared_buffer = create_shared_buffer(SEM_PATH, SHM_PATH, num_tasks*4096);
+
     int tasks_per_worker = calculate_tasks_per_worker(num_workers, num_tasks);
 
     //inicializamos los pipes antes de forkear
@@ -76,6 +84,7 @@ int main(int argc, char const* argv[]){
             perror("select error"),
             exit(1);
         }
+
         for (int i = 0; i < num_workers; i++)
         {
             if(FD_ISSET(pipes[i].pipe_return_answer[0], &read_set) != 0){
@@ -85,13 +94,15 @@ int main(int argc, char const* argv[]){
                     perror("read error");
                     exit(1);
                 }
+
                 char * answer = strtok(buff_answer, "\n");
                 while(answer != NULL){
-                    printf("%s\n", buff_answer);
+                    
+                    shm_send(shared_buffer, answer);
                     answer = strtok(NULL, "\n");
                     solved_tasks++;
+
                 }
-            
 
                 if(index_task < num_tasks){
                     send_task(pipes[i], tasks, &index_task); 
