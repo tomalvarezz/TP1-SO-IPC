@@ -1,9 +1,10 @@
+// This is a personal academic project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
+
 #include "includes.h"
 
-
-
 int main(int argc, char const *argv[]){
-    int task_count;
+    int task_count = -1;
 
     if (argc > 2) {
         fprintf(stderr, "Usage: %s <task_count>\n", argv[0]);
@@ -13,7 +14,7 @@ int main(int argc, char const *argv[]){
         task_count = atoi(argv[1]);
     }
     else if (argc == 1) {
-        scanf("%d", &task_count);
+        scanf("%10d", &task_count);
     }
 
     shared_buffer_ADT shared_buffer = open_shared_buffer(SEM_PATH,SHM_PATH, task_count * MAX_BUFF);
@@ -27,7 +28,6 @@ int main(int argc, char const *argv[]){
         shared_buffer_read(shared_buffer, to_print);
 
         printf("%s", to_print);
-
         i++;
     }
     
@@ -35,5 +35,3 @@ int main(int argc, char const *argv[]){
 
     return OK;
 }
-
-

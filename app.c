@@ -1,5 +1,7 @@
-#include "includes.h"
+// This is a personal academic project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 
+#include "includes.h"
 
 typedef struct {
     int pipe_send_task[2];
@@ -19,8 +21,6 @@ void fill_set(fd_set* read_set, p_communication pipes, int num_workers);
 //*------------------------------
 
 int main(int argc, char const* argv[]){
-
-    //nos aseguramos que nos pasen al menos una tarea
     if(argc < 2){
         fprintf(stderr, "Usage: %s <files>\n", argv[0]);
         return 1;
@@ -32,12 +32,11 @@ int main(int argc, char const* argv[]){
     int solved_tasks = 0;
     int num_workers = calculate_workers(num_tasks);
 
-    //inicializamos y obtenemos el puntero a la shared memory
     shared_buffer_ADT shared_buffer = create_shared_buffer(SEM_PATH, SHM_PATH, num_tasks*MAX_BUFF);
 
     FILE * results_file;
     results_file = fopen("results.txt", "w+");
-    if (results_file == NULL) {
+    if (results_file == NULL){
         perror("fopen");
         exit(NOT_OK);
     }
@@ -47,12 +46,10 @@ int main(int argc, char const* argv[]){
 
     int tasks_per_worker = calculate_tasks_per_worker(num_workers, num_tasks);
 
-    //inicializamos los pipes antes de forkear
     t_communication pipes[num_workers];
-    int highest_fd_read_answer=0;
+    int highest_fd_read_answer = 0;
     create_pipes(pipes, num_workers, &highest_fd_read_answer);
 
-    //inicializamos los workers con sus respectivas tareas iniciales
     initialize_workers(tasks, pipes, num_workers, num_tasks, &index_task);
 
     for (int i = 0; i < num_workers; i++){
@@ -63,26 +60,25 @@ int main(int argc, char const* argv[]){
     send_initial_tasks(tasks, pipes, &index_task, num_workers, tasks_per_worker);
 
     while(solved_tasks < num_tasks){
-        char buff_answer[MAX_BUFF];
+        char buff_answer[MAX_BUFF] = {0};
         fd_set read_set;
         FD_ZERO(&read_set);
         fill_set(&read_set, pipes, num_workers);
-        if (select(highest_fd_read_answer + 1, &read_set, NULL, NULL, NULL) == ERROR)
-        {
+
+        if (select(highest_fd_read_answer + 1, &read_set, NULL, NULL, NULL) == ERROR){
             perror("select error"),
             exit(NOT_OK);
         }
 
         for (int i = 0; i < num_workers; i++){
             if(FD_ISSET(pipes[i].pipe_return_answer[0], &read_set) != 0){
-                int read_return;
-                if ((read_return = read(pipes[i].pipe_return_answer[0], buff_answer, MAX_BUFF)) == ERROR)
-                {
+                if ((read(pipes[i].pipe_return_answer[0], buff_answer, MAX_BUFF)) == ERROR){
                     perror("read error");
                     exit(NOT_OK);
                 }
 
                 char * answer = strtok(buff_answer, "\n");
+
                 while(answer != NULL){
                     shared_buffer_send(shared_buffer, answer);
 
@@ -102,7 +98,6 @@ int main(int argc, char const* argv[]){
                 }
                 
             }
-
         }
     }
 
@@ -126,33 +121,26 @@ int main(int argc, char const* argv[]){
 }
 
 int calculate_workers(int num_tasks){
-
     if(num_tasks < MAX_WORKERS_CAN_CREATE){
         return num_tasks;
     }
-
     return MAX_WORKERS_CAN_CREATE;
 }
 
 int calculate_tasks_per_worker(int num_workers, int num_tasks){
-
     if(num_workers*MAX_TASKS_PER_WORKER < num_tasks){
         return MAX_TASKS_PER_WORKER;
     }
-
     return 1;
 }
 
 void create_pipes(t_communication* pipes, int num_workers, int* highest_fd_read_answer){
-
-    for (int i = 0; i < num_workers; i++)
-    {
-        if (pipe(pipes[i].pipe_return_answer) == ERROR)
-        {
+    for (int i = 0; i < num_workers; i++){
+        if (pipe(pipes[i].pipe_return_answer) == ERROR){
             perror("pipe failed");
         }
-        if (pipe(pipes[i].pipe_send_task) == ERROR)
-        {
+
+        if (pipe(pipes[i].pipe_send_task) == ERROR){
             perror("pipe failed");
         }
 
@@ -160,27 +148,21 @@ void create_pipes(t_communication* pipes, int num_workers, int* highest_fd_read_
             *highest_fd_read_answer = pipes[i].pipe_return_answer[0];
         }
     }
-
 }
 
 void initialize_workers(const char** tasks, t_communication* pipes, int num_workers, int num_tasks, int* index_task){
-
-    for (int i = 0; i < num_workers; i++)
-    {
+    for (int i = 0; i < num_workers; i++){
         int pid;
-        if ((pid = fork()) == ERROR)
-        {
+        if ((pid = fork()) == ERROR){
             perror("fork failed");
             exit(NOT_OK);
         }
 
         if(pid == 0){
-            
             close(pipes[i].pipe_return_answer[0]);
             close(pipes[i].pipe_send_task[1]);
 
-            for (int j = 0; j < num_workers; j++)
-            {
+            for (int j = 0; j < num_workers; j++){
                 if(j != i){
                     close(pipes[j].pipe_return_answer[0]);
                     close(pipes[j].pipe_return_answer[1]);
@@ -189,14 +171,12 @@ void initialize_workers(const char** tasks, t_communication* pipes, int num_work
                 }
             }
 
-            if (dup2(pipes[i].pipe_return_answer[1], STDOUT_FILENO) == ERROR)
-            {
+            if (dup2(pipes[i].pipe_return_answer[1], STDOUT_FILENO) == ERROR){
                 perror("dup2 error");
                 exit(NOT_OK);
             }
 
-            if (dup2(pipes[i].pipe_send_task[0], STDIN_FILENO) == ERROR)
-            {
+            if (dup2(pipes[i].pipe_send_task[0], STDIN_FILENO) == ERROR){
                 perror("dup2 error");
                 exit(NOT_OK);
             }
@@ -204,26 +184,21 @@ void initialize_workers(const char** tasks, t_communication* pipes, int num_work
             close(pipes[i].pipe_return_answer[1]);
             close(pipes[i].pipe_send_task[0]);
 
-            if (execl("./worker", "./worker", NULL) == ERROR)
-            {
+            if (execl("./worker", "./worker", NULL) == ERROR){
                 perror("exec failed");
                 exit(NOT_OK);
             }
         }
     }
-
 }
 
 void send_task(t_communication pipe, const char** tasks, int* index_tasks){
-
     int len = strlen(tasks[*index_tasks]);
-    if (write(pipe.pipe_send_task[1], tasks[*index_tasks], len) == ERROR)
-    {
+    if (write(pipe.pipe_send_task[1], tasks[*index_tasks], len) == ERROR){
         perror("write error");
         exit(NOT_OK);
     }
-    if (write(pipe.pipe_send_task[1], "\n", 1) == ERROR)
-    {
+    if (write(pipe.pipe_send_task[1], "\n", 1) == ERROR){
         perror("write");
         exit(NOT_OK);
     }
@@ -232,22 +207,15 @@ void send_task(t_communication pipe, const char** tasks, int* index_tasks){
 }
 
 void send_initial_tasks(const char** tasks, p_communication pipes, int* index_tasks, int num_workers, int num_tasks_per_worker){
-
-    for (int i = 0; i < num_workers; i++)
-    {
-        for (int j = 0; j < num_tasks_per_worker ; j++)
-        {
+    for (int i = 0; i < num_workers; i++){
+        for (int j = 0; j < num_tasks_per_worker ; j++){
             send_task(pipes[i], tasks, index_tasks);
         }
     }
-
 }
 
 void fill_set(fd_set* read_set, p_communication pipes, int num_workers){
-
-    for (int i = 0; i < num_workers; i++)
-    {
+    for (int i = 0; i < num_workers; i++){
         FD_SET(pipes[i].pipe_return_answer[0], read_set);
     }
-    
 }

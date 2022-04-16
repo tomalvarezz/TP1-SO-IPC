@@ -1,19 +1,7 @@
 #ifndef SHARED_BUFFER_ADT_H
 #define SHARED_BUFFER_ADT_H
 
-#include <stdio.h>
-#include <errno.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <string.h>
-#include <fcntl.h>
-#include <stdlib.h>
-#include <sys/select.h>
-#include <limits.h>
-#include <semaphore.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
+#include "includes.h"
 
 #define SEM_PATH "/shm_sem"
 #define SHM_PATH "/shm_buff"

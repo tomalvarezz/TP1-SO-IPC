@@ -1,17 +1,22 @@
+// This is a personal academic project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
+
 #include "includes.h"
 
 void solve_task(char* task_path);
 
 int main(int argc, char *argv[]){
-
-    if(setvbuf(stdout, NULL, _IONBF, 0) == ERROR){perror("setvbuf error");}
+    if(setvbuf(stdout, NULL, _IONBF, 0) == ERROR){
+        perror("setvbuf error");
+        exit(NOT_OK);
+    }
     
     char *task_path = NULL;
     size_t len = 0;
     ssize_t nread;
 
     while ((nread = getline(&task_path, &len, stdin)) != 0) {
-        task_path[nread-1]= 0;
+        task_path[nread-1] = 0;
         solve_task(task_path);
     
     }
@@ -21,7 +26,6 @@ int main(int argc, char *argv[]){
 } 
 
 void solve_task(char* task_path){
-
     char shell_minisat_line[MAX_BUFF];
     char minisat_required_output[MAX_BUFF];
 
@@ -51,7 +55,7 @@ void solve_task(char* task_path){
     char satisfiability[14] = {0};
 
 
-    if(sscanf(minisat_required_output, "Numberofvariables:%dNumberofclauses:%dCPUtime:%10fs%s", &number_of_variables, &number_of_clauses, &cpu_time, satisfiability) == EOF){
+    if(sscanf(minisat_required_output, "Numberofvariables:%10dNumberofclauses:%10dCPUtime:%10fs%13s", &number_of_variables, &number_of_clauses, &cpu_time, satisfiability) == EOF){
         perror("sscanf");
         exit(NOT_OK);
     }
