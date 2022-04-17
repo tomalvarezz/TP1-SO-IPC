@@ -134,7 +134,7 @@ int calculate_tasks_per_worker(int num_workers, int num_tasks){
     return 1;
 }
 
-void create_pipes(t_communication* pipes, int num_workers, int* highest_fd_read_answer){
+void create_pipes(p_communication pipes, int num_workers, int* highest_fd_read_answer){
     for (int i = 0; i < num_workers; i++){
         if (pipe(pipes[i].pipe_return_answer) == ERROR){
             perror("pipe failed");
@@ -150,7 +150,7 @@ void create_pipes(t_communication* pipes, int num_workers, int* highest_fd_read_
     }
 }
 
-void initialize_workers(const char** tasks, t_communication* pipes, int num_workers, int num_tasks, int* index_task){
+void initialize_workers(const char** tasks, p_communication pipes, int num_workers, int num_tasks, int* index_task){
     for (int i = 0; i < num_workers; i++){
         int pid;
         if ((pid = fork()) == ERROR){
