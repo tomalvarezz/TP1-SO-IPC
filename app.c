@@ -71,7 +71,7 @@ int main(int argc, char const* argv[]){
         }
 
         for (int i = 0; i < num_workers; i++){
-            if(FD_ISSET(pipes[i].pipe_return_answer[0], &read_set) != 0){
+            if(FD_ISSET(pipes[i].pipe_return_answer[0], &read_set)){
                 if ((read(pipes[i].pipe_return_answer[0], buff_answer, MAX_BUFF)) == ERROR){
                     perror("read error");
                     exit(NOT_OK);

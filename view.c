@@ -26,7 +26,6 @@ int main(int argc, char const *argv[]){
     while (i <= task_count) {
         shared_buffer_wait(shared_buffer);
         shared_buffer_read(shared_buffer, to_print);
-
         printf("%s", to_print);
         i++;
     }

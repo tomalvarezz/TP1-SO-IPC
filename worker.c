@@ -18,7 +18,6 @@ int main(int argc, char *argv[]){
     while ((nread = getline(&task_path, &len, stdin)) != 0) {
         task_path[nread-1] = 0;
         solve_task(task_path);
-    
     }
 
     free(task_path);
@@ -53,7 +52,6 @@ void solve_task(char* task_path){
     int number_of_variables, number_of_clauses;
     float cpu_time;
     char satisfiability[14] = {0};
-
 
     if(sscanf(minisat_required_output, "Numberofvariables:%10dNumberofclauses:%10dCPUtime:%10fs%13s", &number_of_variables, &number_of_clauses, &cpu_time, satisfiability) == EOF){
         perror("sscanf");

@@ -25,44 +25,48 @@ con las funciones de sem_open, shm_open y mmap.
 */
 shared_buffer_ADT create_shared_buffer(char * sem_path, char *shm_path, int shm_size){
     shared_buffer_ADT shared_buffer = malloc(sizeof(struct shared_buffer_CDT));
-    shared_buffer->sem_path = sem_path;
-    shared_buffer->shm_path = shm_path;
-    shared_buffer->shm_size = shm_size;
 
-    sem_unlink(shared_buffer->sem_path);
-    shm_unlink(shared_buffer->shm_path);
+    if(shared_buffer!=NULL){
+        shared_buffer->sem_path = sem_path;
+        shared_buffer->shm_path = shm_path;
+        shared_buffer->shm_size = shm_size;
 
-    //Notar los flags O_CREAT y O_EXCL para crear el semáforo.
-    shared_buffer->shm_semaphore = sem_open(sem_path, O_CREAT | O_EXCL, S_IWUSR | S_IRUSR, 1);
-    if (shared_buffer->shm_semaphore == SEM_FAILED){
-        perror("sem_open");
-        exit(NOT_OK);
-    } 
+        sem_unlink(shared_buffer->sem_path);
+        shm_unlink(shared_buffer->shm_path);
 
-    //Notar los flags O_CREAT y O_EXCL para crear la shared memory.
-    //Además se usa el flag O_RDWR para poder leer y escribir de la misma.
-    shared_buffer->shm_fd = shm_open(shm_path, O_CREAT | O_EXCL | O_RDWR , S_IWUSR | S_IRUSR);
-    if (shared_buffer->shm_fd == -1){
-        perror("shm_open");
-        exit(NOT_OK);
+        //Notar los flags O_CREAT y O_EXCL para crear el semáforo.
+        shared_buffer->shm_semaphore = sem_open(sem_path, O_CREAT | O_EXCL, S_IWUSR | S_IRUSR, 1);
+        if (shared_buffer->shm_semaphore == SEM_FAILED){
+            perror("sem_open");
+            exit(NOT_OK);
+        } 
+
+        //Notar los flags O_CREAT y O_EXCL para crear la shared memory.
+        //Además se usa el flag O_RDWR para poder leer y escribir de la misma.
+        shared_buffer->shm_fd = shm_open(shm_path, O_CREAT | O_EXCL | O_RDWR , S_IWUSR | S_IRUSR);
+        if (shared_buffer->shm_fd == -1){
+            perror("shm_open");
+            exit(NOT_OK);
+        }
+
+        if (ftruncate(shared_buffer->shm_fd, shm_size) == -1){
+            perror("ftruncate");
+            exit(NOT_OK);
+        }
+
+        //Como usaremos esta función en la app para escribir al buffer, usamos el modo PROT_WRITE.
+        shared_buffer->shm_mapped_ptr = mmap(NULL, shm_size, PROT_WRITE, MAP_SHARED, shared_buffer->shm_fd, 0);
+
+        if (shared_buffer->shm_mapped_ptr == MAP_FAILED){
+            perror("mmap");
+            exit(NOT_OK);
+        }
+
+        shared_buffer->shm_write_ptr = shared_buffer->shm_mapped_ptr;
+        shared_buffer->shm_read_ptr = shared_buffer->shm_mapped_ptr;
+
     }
-
-    if (ftruncate(shared_buffer->shm_fd, shm_size) == -1){
-        perror("ftruncate");
-        exit(NOT_OK);
-    }
-
-    //Como usaremos esta función en la app para escribir al buffer, usamos el modo PROT_WRITE.
-    shared_buffer->shm_mapped_ptr = mmap(NULL, shm_size, PROT_WRITE, MAP_SHARED, shared_buffer->shm_fd, 0);
-
-    if (shared_buffer->shm_mapped_ptr == MAP_FAILED){
-        perror("mmap");
-        exit(NOT_OK);
-    }
-
-    shared_buffer->shm_write_ptr = shared_buffer->shm_mapped_ptr;
-    shared_buffer->shm_read_ptr = shared_buffer->shm_mapped_ptr;
-
+    
     return shared_buffer;
 }
 
@@ -98,30 +102,33 @@ Notar que desde como desde el ADT creado con open se leerá, queda reflejado en 
 */
 shared_buffer_ADT open_shared_buffer(char* sem_path, char* shm_path, int shm_size){
     shared_buffer_ADT shared_buffer = malloc(sizeof(struct shared_buffer_CDT));
-    shared_buffer->sem_path = sem_path;
-    shared_buffer->shm_path = shm_path;
-    shared_buffer->shm_size = shm_size;
 
-    shared_buffer->shm_semaphore = sem_open(sem_path, O_RDONLY, S_IRUSR, 0);
-    if (shared_buffer->shm_semaphore == SEM_FAILED){
-        perror("sem_open");
-        exit(NOT_OK);
-    } 
+    if (shared_buffer != NULL){
+          shared_buffer->sem_path = sem_path;
+        shared_buffer->shm_path = shm_path;
+        shared_buffer->shm_size = shm_size;
 
-    shared_buffer->shm_fd = shm_open(shm_path, O_RDONLY, S_IRUSR);
-    if (shared_buffer->shm_fd == ERROR){
-        perror("shm_open");
-        exit(NOT_OK);
+        shared_buffer->shm_semaphore = sem_open(sem_path, O_RDONLY, S_IRUSR, 0);
+        if (shared_buffer->shm_semaphore == SEM_FAILED){
+            perror("sem_open");
+            exit(NOT_OK);
+        } 
+
+        shared_buffer->shm_fd = shm_open(shm_path, O_RDONLY, S_IRUSR);
+        if (shared_buffer->shm_fd == ERROR){
+            perror("shm_open");
+            exit(NOT_OK);
+        }
+
+        shared_buffer->shm_mapped_ptr = mmap(NULL, shm_size, PROT_READ, MAP_SHARED, shared_buffer->shm_fd, 0);
+        if (shared_buffer->shm_mapped_ptr == MAP_FAILED){
+            perror("mmap");
+            exit(NOT_OK);
+        }
+
+        shared_buffer->shm_write_ptr = shared_buffer->shm_mapped_ptr;
+        shared_buffer->shm_read_ptr = shared_buffer->shm_mapped_ptr;
     }
-
-    shared_buffer->shm_mapped_ptr = mmap(NULL, shm_size, PROT_READ, MAP_SHARED, shared_buffer->shm_fd, 0);
-    if (shared_buffer->shm_mapped_ptr == MAP_FAILED){
-        perror("mmap");
-        exit(NOT_OK);
-    }
-
-    shared_buffer->shm_write_ptr = shared_buffer->shm_mapped_ptr;
-    shared_buffer->shm_read_ptr = shared_buffer->shm_mapped_ptr;
 
     return shared_buffer;
 }
