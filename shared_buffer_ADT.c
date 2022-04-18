@@ -19,9 +19,6 @@ struct shared_buffer_CDT{
 /*
 Función que crea de cero un shared_buffer con los paths de semaphore y shared memory especificados, con tamaño shm_size.
 Notar que hace unlinks de sem y shm, para evitar conflictos en caso de que se haya creado dos veces con paths repetidos.
-
-Los 3 parámetros pasados se asignan directamente a sus homónimos en la struct, y los demás datos se completan
-con las funciones de sem_open, shm_open y mmap.
 */
 shared_buffer_ADT create_shared_buffer(char * sem_path, char *shm_path, int shm_size){
     shared_buffer_ADT shared_buffer = malloc(sizeof(struct shared_buffer_CDT));
@@ -34,15 +31,12 @@ shared_buffer_ADT create_shared_buffer(char * sem_path, char *shm_path, int shm_
         sem_unlink(shared_buffer->sem_path);
         shm_unlink(shared_buffer->shm_path);
 
-        //Notar los flags O_CREAT y O_EXCL para crear el semáforo.
         shared_buffer->shm_semaphore = sem_open(sem_path, O_CREAT | O_EXCL, S_IWUSR | S_IRUSR, 1);
         if (shared_buffer->shm_semaphore == SEM_FAILED){
             perror("sem_open");
             exit(NOT_OK);
         } 
 
-        //Notar los flags O_CREAT y O_EXCL para crear la shared memory.
-        //Además se usa el flag O_RDWR para poder leer y escribir de la misma.
         shared_buffer->shm_fd = shm_open(shm_path, O_CREAT | O_EXCL | O_RDWR , S_IWUSR | S_IRUSR);
         if (shared_buffer->shm_fd == -1){
             perror("shm_open");
@@ -54,7 +48,6 @@ shared_buffer_ADT create_shared_buffer(char * sem_path, char *shm_path, int shm_
             exit(NOT_OK);
         }
 
-        //Como usaremos esta función en la app para escribir al buffer, usamos el modo PROT_WRITE.
         shared_buffer->shm_mapped_ptr = mmap(NULL, shm_size, PROT_WRITE, MAP_SHARED, shared_buffer->shm_fd, 0);
 
         if (shared_buffer->shm_mapped_ptr == MAP_FAILED){
@@ -96,9 +89,6 @@ void close_shared_buffer(shared_buffer_ADT shared_buffer){
 /*
 Función que abre un shared_buffer con los paths de semaphore y shared memory especificados, con tamaño shm_size.
 Notar que NO hace unlinks de sem y shm, pues únicamente se abre una shared memory ya creada.
-
-Los parámetros se asignan de forma análoga a create_shared_buffer.
-Notar que desde como desde el ADT creado con open se leerá, queda reflejado en cambios en los flags de los open y mmap.
 */
 shared_buffer_ADT open_shared_buffer(char* sem_path, char* shm_path, int shm_size){
     shared_buffer_ADT shared_buffer = malloc(sizeof(struct shared_buffer_CDT));

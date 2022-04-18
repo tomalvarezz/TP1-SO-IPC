@@ -41,6 +41,10 @@ int main(int argc, char const* argv[]){
         exit(NOT_OK);
     }
 
+    /* 
+    Se hace un sleep de 2 segundos para ver si aparece el proceso vista y luego se envia por stdout el numero
+    de tareas para que lo reciba el mismo
+    */
     sleep(2);
     printf("%d", num_tasks);
 
@@ -52,6 +56,7 @@ int main(int argc, char const* argv[]){
 
     initialize_workers(tasks, pipes, num_workers, num_tasks, &index_task);
 
+    //Cerramos los pipes que no usará el proceso padre (app)
     for (int i = 0; i < num_workers; i++){
         close(pipes[i].pipe_return_answer[1]);
         close(pipes[i].pipe_send_task[0]);
@@ -78,7 +83,7 @@ int main(int argc, char const* argv[]){
                 }
 
                 char * answer = strtok(buff_answer, "\n");
-
+                //Notar que utilizamos como token el "\n" para la separacion de respuestas dentro de un mismo worker
                 while(answer != NULL){
                     shared_buffer_send(shared_buffer, answer);
 
@@ -162,6 +167,7 @@ void initialize_workers(const char** tasks, p_communication pipes, int num_worke
             close(pipes[i].pipe_return_answer[0]);
             close(pipes[i].pipe_send_task[1]);
 
+            //Cerramos los pipes que no usara el hijo (worker) actual
             for (int j = 0; j < num_workers; j++){
                 if(j != i){
                     close(pipes[j].pipe_return_answer[0]);
@@ -181,6 +187,7 @@ void initialize_workers(const char** tasks, p_communication pipes, int num_worke
                 exit(NOT_OK);
             }
 
+            //Cerramos los pipes que no se usaran pues fueron duplicados
             close(pipes[i].pipe_return_answer[1]);
             close(pipes[i].pipe_send_task[0]);
 
@@ -198,6 +205,8 @@ void send_task(t_communication pipe, const char** tasks, int* index_tasks){
         perror("write error");
         exit(NOT_OK);
     }
+
+    //Enviamos un "/n" luego de cada tarea para que el getline() del worker pueda identificar el fin del path
     if (write(pipe.pipe_send_task[1], "\n", 1) == ERROR){
         perror("write");
         exit(NOT_OK);

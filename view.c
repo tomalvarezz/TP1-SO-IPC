@@ -14,14 +14,14 @@ int main(int argc, char const *argv[]){
         task_count = atoi(argv[1]);
     }
     else if (argc == 1) {
+        //En este caso leemos de stdin el numero de tareas (el cual sera enviado por la app luego de 2 seg)
         scanf("%10d", &task_count);
     }
 
     shared_buffer_ADT shared_buffer = open_shared_buffer(SEM_PATH,SHM_PATH, task_count * MAX_BUFF);
 
     int i = 0;
-    char to_print[MAX_BUFF];
-    
+    char to_print[MAX_BUFF]; 
 
     while (i <= task_count) {
         shared_buffer_wait(shared_buffer);
